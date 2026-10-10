@@ -1,0 +1,7 @@
+# build output and per-user runtime files
+*.exe
+*.zip
+config.ini
+data/
+textures/
+dist/
