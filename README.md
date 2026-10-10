@@ -1,6 +1,6 @@
-﻿<div align="center">
+<div align="center">
 
-# ðŸŒ Live Earth Wallpaper
+# 🌍 Live Earth Wallpaper
 
 **A real-time 3D Earth for your Windows desktop. Real sun, real day and night, live satellite clouds.**
 **It uses about 0.2% CPU.**
@@ -9,21 +9,28 @@
 
 <sub>24 hours in 5 seconds: the Earth turning under the Sun (the clouds stay frozen in this preview)</sub>
 
+<br><br>
+
+<a href="https://github.com/thefuturrjfhejh/live-earth-wallpaper/releases/latest"><img src="https://img.shields.io/badge/⬇_Download-LiveEarth.zip-2ea44f?style=for-the-badge" alt="Download"></a>
+<img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?style=for-the-badge&logo=windows" alt="Windows 10 and 11">
+<img src="https://img.shields.io/badge/app%20size-40%20KB-blue?style=for-the-badge" alt="40 KB">
+<img src="https://img.shields.io/badge/CPU-~0.2%25-brightgreen?style=for-the-badge" alt="About 0.2% CPU">
+
 </div>
 
 ---
 
-## âœ¨ What you get
+## ✨ What you get
 
 | | |
 |---|---|
-| â˜€ï¸ **Real Sun position** | The day/night line is exactly where it is right now, accurate to the minute |
-| ðŸŒ† **City lights** | Cities light up as night reaches them |
-| â˜ï¸ **Live clouds** | Real weather-satellite cloud cover, refreshed every 3 hours |
-| ðŸŒŠ **Realistic look** | Sun glint on the oceans, cloud shadows, a blue atmosphere glow, orange sunset band |
-| ðŸ‚ **Seasons** | The land changes with the month: snow in winter, green in summer |
-| ðŸ“ **Your city** | Optional marker with today's sunrise and sunset times |
-| ðŸ§Š **Stays cool** | Draws one frame per minute, then sleeps. Pauses while you game or watch fullscreen video |
+| ☀️ **Real Sun position** | The day/night line is exactly where it is right now, accurate to the minute |
+| 🌆 **City lights** | Cities light up as night reaches them |
+| ☁️ **Live clouds** | Real weather-satellite cloud cover, refreshed every 3 hours |
+| 🌊 **Realistic look** | Sun glint on the oceans, cloud shadows, a blue atmosphere glow, orange sunset band |
+| 🍂 **Seasons** | The land changes with the month: snow in winter, green in summer |
+| 📍 **Your city** | Optional marker with today's sunrise and sunset times |
+| 🧊 **Stays cool** | Draws one frame per minute, then sleeps. Pauses while you game or watch fullscreen video |
 
 <p align="center">
   <img src="docs/day.png" width="49%" alt="Daytime view">
@@ -32,23 +39,23 @@
 
 ---
 
-## ðŸš€ Install (1 minute)
+## 🚀 Install (1 minute)
 
-1. Go to **[Releases](../../releases/latest)** and download **`LiveEarth.zip`**.
-2. Right-click the zip â†’ **Extract All** â†’ pick a folder you'll keep, for example `Documents\LiveEarth`.
+1. Go to **[Releases](https://github.com/thefuturrjfhejh/live-earth-wallpaper/releases/latest)** and download **`LiveEarth.zip`**.
+2. Right-click the zip → **Extract All** → pick a folder you'll keep, for example `Documents\LiveEarth`.
 3. Double-click **`LiveEarth.exe`**.
 
 That's it. In a few seconds your wallpaper becomes the live Earth.
 
 > **"Windows protected your PC"?** That happens because the app is new and not code-signed.
-> Click **More info** â†’ **Run anyway**. The full source code is in this repo if you want to check it or build it yourself.
+> Click **More info** → **Run anyway**. The full source code is in this repo if you want to check it or build it yourself.
 
 ### Make it start with Windows
-Find the ðŸŒ globe icon in your taskbar tray (click the **^** arrow if you don't see it).
+Find the 🌐 globe icon in your taskbar tray (click the **^** arrow if you don't see it).
 Right-click it and tick **Start with Windows**.
 
 ### Add your city (optional)
-Right-click the tray icon â†’ **Settings file...**, then fill in your city and coordinates:
+Right-click the tray icon → **Settings file...**, then fill in your city and coordinates:
 
 ```ini
 place=Kolkata
@@ -61,7 +68,7 @@ Save the file, then choose **Refresh now** from the tray menu.
 
 ---
 
-## ðŸŽ›ï¸ Tray menu
+## 🎛️ Tray menu
 
 | Option | What it does |
 |---|---|
@@ -78,12 +85,12 @@ More settings, such as globe size and position, update interval and CPU limit, a
 
 ---
 
-## ðŸ§Š Why it won't heat your laptop
+## 🧊 Why it won't heat your laptop
 
 Most "live wallpapers" run a game engine or a web browser at 60 frames per second, all day.
-At real speed the Earth turns only **0.25Â° per minute**, which is a pixel or two on your screen. So Live Earth:
+At real speed the Earth turns only **0.25° per minute**, which is a pixel or two on your screen. So Live Earth:
 
-- draws **one frame per minute** (about 0.3â€“0.8 s of work), then sleeps at 0% CPU
+- draws **one frame per minute** (about 0.3–0.8 s of work), then sleeps at 0% CPU
 - runs at **lowest priority** with Windows 11's **EcoQoS** power-saving mode
 - **skips frames** while you game, watch fullscreen video, present, or while the laptop is busy (over 75% CPU)
 - uses no GPU and no background browser. It's one small `.exe` with no dependencies
@@ -92,7 +99,7 @@ Measured on an Intel i5-1035G1 laptop: **about 0.2% average CPU and about 140 MB
 
 ---
 
-## ðŸ”¬ How it works
+## 🔬 How it works
 
 There's no game engine. Live Earth contains its own small **ray tracer** written in C#:
 
@@ -115,7 +122,7 @@ The textures (about 6 MB) download automatically on first run. After that, only 
 
 ---
 
-## ðŸ› ï¸ Build from source
+## 🛠️ Build from source
 
 You don't need Visual Studio or an SDK. Windows already includes the C# compiler.
 
@@ -135,13 +142,13 @@ Render a single frame or a time-lapse without touching your wallpaper:
 
 ---
 
-## ðŸ—‘ï¸ Uninstall
+## 🗑️ Uninstall
 
-Right-click the tray icon â†’ untick **Start with Windows** â†’ **Restore my old wallpaper & exit**.
+Right-click the tray icon → untick **Start with Windows** → **Restore my old wallpaper & exit**.
 Then delete the folder.
 
 ---
 
 <div align="center">
-<sub>Contains modified EUMETSAT data Â· Earth imagery courtesy NASA Visible Earth / Earth Observatory Â· Built with Claude</sub>
+<sub>Contains modified EUMETSAT data · Earth imagery courtesy NASA Visible Earth / Earth Observatory · Built with Claude</sub>
 </div>
