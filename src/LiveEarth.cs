@@ -78,6 +78,7 @@ namespace LiveEarth
         public bool ShowText = true;
         public bool ShowMarker = true;
         public int CpuLimit = 75;            // skip a frame while the laptop is busier than this (%)
+        public bool LiveLights = true;       // last night's real satellite city lights instead of the 2016 composite
 
         static double D(string s, double def) { double v; return double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out v) ? v : def; }
         static bool B(string s, bool def) { s = s.Trim().ToLowerInvariant(); if (s == "1" || s == "true" || s == "on" || s == "yes") return true; if (s == "0" || s == "false" || s == "off" || s == "no") return false; return def; }
@@ -116,6 +117,7 @@ namespace LiveEarth
                 case "showtext": ShowText = B(v, ShowText); break;
                 case "showmarker": ShowMarker = B(v, ShowMarker); break;
                 case "cpulimit": CpuLimit = (int)D(v, CpuLimit); break;
+                case "lights": LiveLights = v.Trim().ToLowerInvariant() != "2016"; break;
             }
         }
 
@@ -147,6 +149,9 @@ namespace LiveEarth
             sb.AppendLine("showmarker=" + (ShowMarker ? "on" : "off"));
             sb.AppendLine("# skip a frame while total CPU use is above this percent (keeps a busy laptop cool)");
             sb.AppendLine("cpulimit=" + CpuLimit.ToString(ci));
+            sb.AppendLine("# lights=live : last night's real city lights from NASA's VIIRS satellites (refreshed daily)");
+            sb.AppendLine("# lights=2016 : NASA's cloud-free 2016 Black Marble composite");
+            sb.AppendLine("lights=" + (LiveLights ? "live" : "2016"));
             try { File.WriteAllText(FilePath, sb.ToString()); } catch { }
         }
     }
@@ -724,6 +729,142 @@ namespace LiveEarth
             if (r.Spec == null && File.Exists(specPath)) r.Spec = Tex.Load(specPath, Renderer.TW, Renderer.TH, 1);
         }
 
+        // ---------- live night lights (last night's VIIRS Day/Night Band passes from NASA GIBS) ----------
+        static DateTime lightsStamp = DateTime.MinValue, lightsTry = DateTime.MinValue;
+        static bool lightsLive;
+        public static string LightsLabel = "";
+
+        public static void EnsureLights(Renderer r, Config cfg)
+        {
+            string bmPath = Path.Combine(TexDir, "night_blackmarble2016.jpg");
+            string livePath = Path.Combine(TexDir, "lights_live.png");
+            if (!cfg.LiveLights)
+            {
+                if (lightsLive || r.Night == null) { r.Night = Tex.Load(bmPath, Renderer.TW, Renderer.TH, 3); lightsLive = false; LightsLabel = ""; }
+                return;
+            }
+            bool stale = !File.Exists(livePath) || (DateTime.UtcNow - File.GetLastWriteTimeUtc(livePath)).TotalHours > 8;
+            if (stale && (DateTime.UtcNow - lightsTry).TotalMinutes > 60)
+            {
+                lightsTry = DateTime.UtcNow;
+                try { BuildLiveLights(bmPath, livePath); } catch (Exception ex) { Log.W("live lights: " + ex.Message); }
+            }
+            if (File.Exists(livePath))
+            {
+                var ts = File.GetLastWriteTimeUtc(livePath);
+                if (!lightsLive || ts != lightsStamp)
+                {
+                    r.Night = Tex.Load(livePath, Renderer.TW, Renderer.TH, 3);
+                    lightsStamp = ts; lightsLive = true; GC.Collect();
+                    try { LightsLabel = File.ReadAllText(livePath + ".txt").Trim(); } catch { LightsLabel = ""; }
+                }
+            }
+        }
+
+        static void BuildLiveLights(string bmPath, string outPath)
+        {
+            const int W = 4096, H = 2048;
+            string[] layers = { "VIIRS_SNPP_DayNightBand_At_Sensor_Radiance", "VIIRS_NOAA20_DayNightBand_At_Sensor_Radiance", "VIIRS_NOAA21_DayNightBand_At_Sensor_Radiance" };
+            var acc = new float[W * H]; var have = new bool[W * H];
+            int got = 0; DateTime night = DateTime.MinValue;
+            string tmp = Path.Combine(TexDir, "viirs.tmp.jpg");
+            for (int back = 1; back <= 3 && got == 0; back++)
+            {
+                var day = DateTime.UtcNow.Date.AddDays(-back);
+                foreach (var layer in layers)
+                {
+                    string url = "https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=" + layer +
+                        "&CRS=EPSG:4326&BBOX=-90,-180,90,180&WIDTH=" + W + "&HEIGHT=" + H + "&FORMAT=image/jpeg&TIME=" + day.ToString("yyyy-MM-dd");
+                    if (!Fetch(url, tmp)) continue;
+                    if (new FileInfo(tmp).Length < 60000) continue;      // empty layer for that date
+                    var t = Tex.Load(tmp, W, H, 1);
+                    for (int i = 0; i < t.D.Length; i++) { int v = t.D[i]; if (v > 4) { have[i] = true; float f = v / 255f; if (f > acc[i]) acc[i] = f; } }
+                    got++; night = day;
+                }
+            }
+            try { File.Delete(tmp); } catch { }
+            if (got == 0) { Log.W("live lights: no VIIRS data available"); return; }
+
+            // high-pass: lights are point sources, moonlit clouds / airglow / twilight are smooth
+            const int R = 10;
+            var integ = new double[(W + 1) * (H + 1)];
+            for (int y = 0; y < H; y++)
+            {
+                double row = 0;
+                for (int x = 0; x < W; x++) { row += acc[y * W + x]; integ[(y + 1) * (W + 1) + x + 1] = integ[y * (W + 1) + x + 1] + row; }
+            }
+            var bm = Tex.Load(bmPath, W, H, 3);
+            var hp = new float[W * H];
+            var vals = new List<float>(); var bmVals = new List<float>();
+            for (int y = 0; y < H; y++)
+            {
+                int y0 = Math.Max(0, y - R), y1 = Math.Min(H, y + R + 1);
+                for (int x = 0; x < W; x++)
+                {
+                    int i = y * W + x;
+                    int x0 = Math.Max(0, x - R), x1 = Math.Min(W, x + R + 1);
+                    double sum = integ[y1 * (W + 1) + x1] - integ[y0 * (W + 1) + x1] - integ[y1 * (W + 1) + x0] + integ[y0 * (W + 1) + x0];
+                    double mean = sum / ((y1 - y0) * (x1 - x0));
+                    // no pass, or a sunlit / twilight swath (only happens at high latitudes; bright megacities must not trip it)
+                    double latDeg = 90 - (y + 0.5) * 180.0 / H;
+                    if (!have[i] || (mean > 0.33 && Math.Abs(latDeg) > 48)) { have[i] = false; continue; }
+                    float v = (float)Math.Max(0, acc[i] - mean * 1.05 - 0.025);
+                    hp[i] = v;
+                    float b = (bm.D[i * 3] * 0.3f + bm.D[i * 3 + 1] * 0.6f + bm.D[i * 3 + 2] * 0.1f) / 255f;
+                    if (v > 0 && (i & 7) == 0) vals.Add(v);
+                    if (b > 0.12f && (i & 7) == 0) bmVals.Add(b);
+                }
+            }
+            if (vals.Count < 1000) { Log.W("live lights: too little signal"); return; }
+            vals.Sort(); bmVals.Sort();
+            float scale = bmVals[(int)(bmVals.Count * 0.985)] / Math.Max(1e-3f, vals[(int)(vals.Count * 0.985)]);
+
+            // where lights could plausibly be (2016 lights, blurred wide) - rejects ice / cloud-edge noise but lets
+            // last night's reality decide what is actually lit
+            var plaus = new double[(W + 1) * (H + 1)];
+            for (int y = 0; y < H; y++)
+            {
+                double row = 0;
+                for (int x = 0; x < W; x++)
+                {
+                    int i = y * W + x;
+                    row += (bm.D[i * 3 + 1] / 255.0) > 0.10 ? 1 : 0;
+                    plaus[(y + 1) * (W + 1) + x + 1] = plaus[y * (W + 1) + x + 1] + row;
+                }
+            }
+            const int P = 6;
+            using (var outBmp = new Bitmap(W, H, PixelFormat.Format24bppRgb))
+            {
+                var bd = outBmp.LockBits(new Rectangle(0, 0, W, H), ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
+                var line = new byte[bd.Stride];
+                for (int y = 0; y < H; y++)
+                {
+                    int y0 = Math.Max(0, y - P), y1 = Math.Min(H, y + P + 1);
+                    for (int x = 0; x < W; x++)
+                    {
+                        int i = y * W + x;
+                        byte r, g, b;
+                        if (have[i])
+                        {
+                            int x0 = Math.Max(0, x - P), x1 = Math.Min(W, x + P + 1);
+                            double near = plaus[y1 * (W + 1) + x1] - plaus[y0 * (W + 1) + x1] - plaus[y1 * (W + 1) + x0] + plaus[y0 * (W + 1) + x0];
+                            float v = near > 0 ? (float)Math.Pow(Math.Min(1f, hp[i] * scale), 0.8) : 0f;
+                            r = g = b = (byte)(v * 255);
+                        }
+                        else { r = bm.D[i * 3]; g = bm.D[i * 3 + 1]; b = bm.D[i * 3 + 2]; }   // gap in last night's passes
+                        line[x * 3] = b; line[x * 3 + 1] = g; line[x * 3 + 2] = r;
+                    }
+                    Marshal.Copy(line, 0, new IntPtr(bd.Scan0.ToInt64() + (long)y * bd.Stride), bd.Stride);
+                }
+                outBmp.UnlockBits(bd);
+                outBmp.Save(outPath + ".part", ImageFormat.Png);
+            }
+            if (File.Exists(outPath)) File.Delete(outPath);
+            File.Move(outPath + ".part", outPath);
+            File.WriteAllText(outPath + ".txt", "Lights  night of " + night.ToString("d MMM", CultureInfo.InvariantCulture) + " · VIIRS");
+            Log.W("live lights built from " + got + " satellite passes, night of " + night.ToString("yyyy-MM-dd"));
+        }
+
         public static bool EnsureDay(Renderer r, int month, ref int loaded)
         {
             if (loaded == month && r.Day != null) return true;
@@ -808,6 +949,7 @@ namespace LiveEarth
                 return;
             }
             if (cfg.Clouds) EnsureClouds(rnd, ref cloudStamp, ref lastCloudTry);
+            EnsureLights(rnd, cfg);
             var screen = Screen.PrimaryScreen.Bounds;
             var work = Screen.PrimaryScreen.WorkingArea;
             var fr = rnd.Render(utc, cfg, screen);
@@ -825,6 +967,7 @@ namespace LiveEarth
             EnsureStatic(r);
             EnsureDay(r, utc.ToLocalTime().Month, ref lm);
             if (cfg.Clouds) EnsureClouds(r, ref cs, ref lt);
+            EnsureLights(r, cfg);
             var fr = r.Render(utc, cfg, new Rectangle(0, 0, size.Width, size.Height));
             var work = new Rectangle(0, 0, size.Width, size.Height - (int)(size.Height * 0.0667));
             Overlay.Draw(fr, cfg, utc.ToLocalTime(), work, cs, r.Cloud != null && cfg.Clouds);
@@ -917,6 +1060,7 @@ namespace LiveEarth
                     double hrs = (DateTime.UtcNow - cloudStampUtc).TotalHours;
                     meta += "     Clouds  " + (hrs < 1 ? "<1 h" : ((int)hrs) + " h") + " old · EUMETSAT";
                 }
+                if (App.LightsLabel.Length > 0) meta += "     " + App.LightsLabel;
 
                 using (var fSmall = new Font(reg, (float)(12 * s), GraphicsUnit.Pixel))
                 using (var fMid = new Font(semi, (float)(19 * s), GraphicsUnit.Pixel))

@@ -25,7 +25,7 @@
 | | |
 |---|---|
 | ☀️ **Real Sun position** | The day/night line is exactly where it is right now, accurate to the minute |
-| 🌆 **City lights** | Cities light up as night reaches them |
+| 🌆 **Last night's real city lights** | Downloaded daily from NASA's VIIRS night satellites, so blackouts and new cities show up |
 | ☁️ **Live clouds** | Real weather-satellite cloud cover, refreshed every 3 hours |
 | 🌊 **Realistic look** | Sun glint on the oceans, cloud shadows, a blue atmosphere glow, orange sunset band |
 | 🍂 **Seasons** | The land changes with the month: snow in winter, green in summer |
@@ -112,13 +112,15 @@ There's no game engine. Live Earth contains its own small **ray tracer** written
 | Layer | Source | Updates |
 |---|---|---|
 | Land and ocean | [NASA Blue Marble Next Generation](https://visibleearth.nasa.gov/collection/1484/blue-marble) (monthly) | Changes with the month |
-| City lights | [NASA Black Marble 2016](https://earthobservatory.nasa.gov/features/NightLights) | Fixed |
+| City lights | Last night's [VIIRS Day/Night Band](https://www.earthdata.nasa.gov/data/instruments/viirs) passes (Suomi NPP + NOAA-20 + NOAA-21) via [NASA GIBS](https://www.earthdata.nasa.gov/engage/open-data-services-software/earthdata-developer-portal/gibs-api), with the cloud glow filtered out. Gaps are filled from [Black Marble 2016](https://earthobservatory.nasa.gov/features/NightLights) | **Daily** |
 | Clouds and water mask | [Live Cloud Maps](https://github.com/matteason/live-cloud-maps) by Matt Eason, built from EUMETSAT data | **Every 3 hours** |
 
-The textures (about 6 MB) download automatically on first run. After that, only the cloud map is refreshed (about 1.5 MB every 3 hours).
+The textures (about 6 MB) download automatically on first run. After that, the cloud map refreshes every 3 hours (about 1.5 MB) and the night lights once a day (about 3 MB).
 
-> **Honest note:** this is a physically accurate *model* of Earth right now, not a live photo. The sunlight and clouds are real-time.
+> **Honest note:** this is a physically accurate *model* of Earth right now, not a live photo. The sunlight and clouds are real-time,
+> and the city lights are from **last night**: satellites photograph each place once per night, around 1:30 AM.
 > The land surface is NASA's monthly average, so one-off events like a fresh snowstorm won't appear.
+> Prefer the classic cloud-free look? Set `lights=2016` in the settings file.
 
 ---
 
